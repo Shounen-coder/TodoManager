@@ -3,11 +3,11 @@ export interface Todo {
     id: string;
     title: string;
     description: string;
-    dateTime: Date;
+    dateTime: string;
     location: string;
     completed: boolean;
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt: string;
+    updatedAt: string;
 
 }
 
@@ -20,6 +20,9 @@ export type UpdateTodo = Partial<Omit<Todo, 'id' | 'createdAt'>> & { id: string 
 
 //custom sorting options type
 export type SortOption = 'name' | 'date' | 'status';
+
+// custom filter options type
+export type FilterOption = 'all' | 'completed' | 'active';
 
 //custom theme type
 export type Theme = 'light' | 'dark';

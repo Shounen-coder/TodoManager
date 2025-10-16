@@ -24,7 +24,13 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
+      "bundler": "metro",
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c578ade4-b162-403f-8826-9a31fb30fefd"
+      }
     }
   }
 }

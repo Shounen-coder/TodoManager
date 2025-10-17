@@ -1,21 +1,22 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
 import './global.css';
+import React from "react";
+import { useThemeStore } from '@/store/themeStore';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import TodoListScreen from '@/screens/TodoListScreen';
+
 
 export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
-}
+  // Get the current theme mode from the store
+  const theme = useThemeStore((state) => state.mode);
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }} >
+      <SafeAreaProvider>
+        <StatusBar style={theme==='dark'? 'light':'dark'} />
+        <TodoListScreen />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  )
+}

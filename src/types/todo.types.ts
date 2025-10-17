@@ -12,10 +12,10 @@ export interface Todo {
 }
 
 // custom create Todo type without id, createdAt, updatedAt
-export type CreateTodo = Omit<Todo, 'id' | 'createdAt' | 'updatedAt'>;
+export type TodoFormData = Omit<Todo, 'id' | 'createdAt' | 'updatedAt' | 'completed'>;
 
-// custom update Todo type with optional fields
-export type UpdateTodo = Partial<Omit<Todo, 'id' | 'createdAt'>> & { id: string };
+// // custom update Todo type with optional fields
+// export type UpdateTodo = Partial<Omit<Todo, 'id' | 'createdAt'>> & { id: string };
 
 
 //custom sorting options type

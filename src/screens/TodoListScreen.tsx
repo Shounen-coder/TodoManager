@@ -23,7 +23,6 @@ const TodoListScreen: React.FC = () => {
   //
 //   const flashListRef = useRef<FlashList<Todo> | null>(null);
 //const flashListRef = useRef<FlashList<Todo>>(null);
-
   const flashListRef = useRef<any>(null);
 
 
@@ -391,7 +390,7 @@ const TodoListScreen: React.FC = () => {
         renderItem={renderTodoItem}
         keyExtractor={keyExtractor}
         getItemType={getItemType}
-        // estimatedItemSize={120}
+        // estimatedItemSize={120} not needed for this version
         contentContainerStyle={{ paddingBottom: 100 }}
         ListEmptyComponent={renderEmptyState}
         refreshControl={
@@ -408,6 +407,7 @@ const TodoListScreen: React.FC = () => {
         onPress={handleAddTodo}
         className="absolute bottom-6 right-6 h-16 w-16 items-center justify-center rounded-full bg-accent shadow-lg"
         style={{
+            bottom: insets.bottom + 60,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.3,

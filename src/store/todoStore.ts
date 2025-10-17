@@ -13,6 +13,7 @@ interface TodoStore {
   searchQuery: string;
   sortBy: SortOption;
   filterBy: FilterOption;
+  _hasHydrated: boolean;
   
   // Actions
   addTodo: (todo: Omit<Todo, 'id' | 'createdAt' | 'updatedAt' | 'completed'>) => void;
@@ -23,6 +24,7 @@ interface TodoStore {
   setSearchQuery: (query: string) => void;
   setSortBy: (sortBy: SortOption) => void;
   setFilterBy: (filterBy: FilterOption) => void;
+  setHasHydrated: (state: boolean) => void;
   
   // Computed getters
   getFilteredTodos: () => Todo[];
@@ -48,6 +50,12 @@ export const useTodoStore = create<TodoStore>()(
       searchQuery: '',
       sortBy: 'date',
       filterBy: 'all',
+      _hasHydrated: false,
+
+      // Set hydration status
+      setHasHydrated: (state) => {
+        set({ _hasHydrated: state });
+      },
 
       // Add new todo
       addTodo: (todoData) => {
@@ -165,6 +173,9 @@ export const useTodoStore = create<TodoStore>()(
     {
       name: 'todo-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

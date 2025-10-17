@@ -15,35 +15,28 @@ import { SORT_OPTIONS, FILTER_OPTIONS } from '../utils/constants';
 
 /**
  * Main TodoList Screen
- * Implements all core features:
- * - FlashList with performance optimization
- * - Search, Sort, Filter
- * - Dark/Light mode toggle
- * - Add/Edit/Delete todos
- * - Swipe-to-delete (in TodoItem)
- * - Clear completed
+ * Implements all core features with proper state subscriptions
  */
 const TodoListScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
 
-  // Theme
+  // Theme - Subscribe to changes
   const theme = useThemeStore((state) => state.mode);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const isDark = theme === 'dark';
 
-  // Todo Store
+  // Todo Store - Subscribe to ALL necessary state
   const todos = useTodoStore((state) => state.todos);
+  const searchQuery = useTodoStore((state) => state.searchQuery);
+  const sortBy = useTodoStore((state) => state.sortBy);
+  const filterBy = useTodoStore((state) => state.filterBy);
   const addTodo = useTodoStore((state) => state.addTodo);
   const updateTodo = useTodoStore((state) => state.updateTodo);
   const deleteTodo = useTodoStore((state) => state.deleteTodo);
   const toggleTodo = useTodoStore((state) => state.toggleTodo);
   const clearCompleted = useTodoStore((state) => state.clearCompleted);
-  const sortBy = useTodoStore((state) => state.sortBy);
-  const filterBy = useTodoStore((state) => state.filterBy);
   const setSortBy = useTodoStore((state) => state.setSortBy);
   const setFilterBy = useTodoStore((state) => state.setFilterBy);
-  const getFilteredTodos = useTodoStore((state) => state.getFilteredTodos);
-  const getStats = useTodoStore((state) => state.getStats);
 
   // Local State
   const [isFormVisible, setIsFormVisible] = useState(false);
@@ -52,9 +45,45 @@ const TodoListScreen: React.FC = () => {
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
 
-  // Computed Values
-  const filteredTodos = useMemo(() => getFilteredTodos(), [getFilteredTodos]);
-  const stats = useMemo(() => getStats(), [getStats]);
+  // Computed Values - Recalculate when dependencies change
+  const filteredTodos = useMemo(() => {
+    // Filter by search query
+    let filtered = todos.filter((todo) => {
+      const matchesSearch =
+        todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        todo.description.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Filter by completion status
+      if (filterBy === 'active') return matchesSearch && !todo.completed;
+      if (filterBy === 'completed') return matchesSearch && todo.completed;
+      return matchesSearch;
+    });
+
+    // Sort
+    filtered = filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.title.localeCompare(b.title);
+        case 'date':
+          return new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime();
+        case 'status':
+          return Number(a.completed) - Number(b.completed);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [todos, searchQuery, sortBy, filterBy]);
+
+  const stats = useMemo(() => {
+    return {
+      total: todos.length,
+      completed: todos.filter((t) => t.completed).length,
+      active: todos.filter((t) => !t.completed).length,
+    };
+  }, [todos]);
+
   const hasCompletedTodos = stats.completed > 0;
 
   /**
@@ -99,10 +128,8 @@ const TodoListScreen: React.FC = () => {
   const handleFormSubmit = useCallback(
     (data: TodoFormData) => {
       if (editingTodo) {
-        // Update existing todo
         updateTodo(editingTodo.id, data);
       } else {
-        // Add new todo
         addTodo(data);
       }
     },
@@ -132,7 +159,6 @@ const TodoListScreen: React.FC = () => {
    */
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    // Simulate refresh delay (in real app, you'd fetch from API)
     setTimeout(() => {
       setRefreshing(false);
     }, 1000);
@@ -140,7 +166,6 @@ const TodoListScreen: React.FC = () => {
 
   /**
    * Render Todo Item
-   * Memoized with useCallback for FlashList performance
    */
   const renderTodoItem = useCallback(
     ({ item }: { item: Todo }) => (
@@ -155,14 +180,14 @@ const TodoListScreen: React.FC = () => {
   );
 
   /**
-   * Get Item Type for FlashList recycling optimization
+   * Get Item Type for FlashList recycling
    */
   const getItemType = useCallback((item: Todo) => {
     return item.completed ? 'completed' : 'active';
   }, []);
 
   /**
-   * Key Extractor for FlashList
+   * Key Extractor
    */
   const keyExtractor = useCallback((item: Todo) => item.id, []);
 
@@ -184,7 +209,6 @@ const TodoListScreen: React.FC = () => {
       {/* Header */}
       <View className="px-4 py-4">
         <View className="flex-row items-center justify-between">
-          {/* Title */}
           <View className="flex-1">
             <Text
               className={`text-3xl font-bold font-mono ${
@@ -202,7 +226,6 @@ const TodoListScreen: React.FC = () => {
             </Text>
           </View>
 
-          {/* Theme Toggle */}
           <TouchableOpacity
             onPress={toggleTheme}
             className={`rounded-full p-3 ${
@@ -227,7 +250,10 @@ const TodoListScreen: React.FC = () => {
         {/* Filter Dropdown */}
         <View className="flex-1">
           <TouchableOpacity
-            onPress={() => setShowFilterMenu(!showFilterMenu)}
+            onPress={() => {
+              setShowFilterMenu(!showFilterMenu);
+              setShowSortMenu(false);
+            }}
             className={`flex-row items-center justify-between rounded-lg border-2 border-text-secondary px-4 py-3 ${
               isDark ? 'bg-bg-secondary' : 'bg-bg-light-secondary'
             }`}
@@ -240,14 +266,9 @@ const TodoListScreen: React.FC = () => {
             >
               {FILTER_OPTIONS.find((f) => f.value === filterBy)?.label}
             </Text>
-            <Ionicons
-              name="filter"
-              size={18}
-              color={isDark ? '#e2b714' : '#d97706'}
-            />
+            <Ionicons name="filter" size={18} color={isDark ? '#e2b714' : '#d97706'} />
           </TouchableOpacity>
 
-          {/* Filter Menu */}
           {showFilterMenu && (
             <View
               className={`absolute top-14 left-0 right-0 z-10 rounded-lg border-2 border-text-secondary ${
@@ -261,9 +282,7 @@ const TodoListScreen: React.FC = () => {
                     setFilterBy(option.value as FilterOption);
                     setShowFilterMenu(false);
                   }}
-                  className={`px-4 py-3 ${
-                    filterBy === option.value ? 'bg-accent/20' : ''
-                  }`}
+                  className={`px-4 py-3 ${filterBy === option.value ? 'bg-accent/20' : ''}`}
                   activeOpacity={0.7}
                 >
                   <Text
@@ -286,7 +305,10 @@ const TodoListScreen: React.FC = () => {
         {/* Sort Dropdown */}
         <View className="flex-1">
           <TouchableOpacity
-            onPress={() => setShowSortMenu(!showSortMenu)}
+            onPress={() => {
+              setShowSortMenu(!showSortMenu);
+              setShowFilterMenu(false);
+            }}
             className={`flex-row items-center justify-between rounded-lg border-2 border-text-secondary px-4 py-3 ${
               isDark ? 'bg-bg-secondary' : 'bg-bg-light-secondary'
             }`}
@@ -299,14 +321,9 @@ const TodoListScreen: React.FC = () => {
             >
               {SORT_OPTIONS.find((s) => s.value === sortBy)?.label}
             </Text>
-            <Ionicons
-              name="swap-vertical"
-              size={18}
-              color={isDark ? '#e2b714' : '#d97706'}
-            />
+            <Ionicons name="swap-vertical" size={18} color={isDark ? '#e2b714' : '#d97706'} />
           </TouchableOpacity>
 
-          {/* Sort Menu */}
           {showSortMenu && (
             <View
               className={`absolute top-14 left-0 right-0 z-10 rounded-lg border-2 border-text-secondary ${
@@ -320,9 +337,7 @@ const TodoListScreen: React.FC = () => {
                     setSortBy(option.value as SortOption);
                     setShowSortMenu(false);
                   }}
-                  className={`px-4 py-3 ${
-                    sortBy === option.value ? 'bg-accent/20' : ''
-                  }`}
+                  className={`px-4 py-3 ${sortBy === option.value ? 'bg-accent/20' : ''}`}
                   activeOpacity={0.7}
                 >
                   <Text

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +19,13 @@ import { SORT_OPTIONS, FILTER_OPTIONS } from '../utils/constants';
  */
 const TodoListScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+
+  //
+//   const flashListRef = useRef<FlashList<Todo> | null>(null);
+//const flashListRef = useRef<FlashList<Todo>>(null);
+
+  const flashListRef = useRef<any>(null);
+
 
   // Theme - Subscribe to changes
   const theme = useThemeStore((state) => state.mode);
@@ -65,7 +72,7 @@ const TodoListScreen: React.FC = () => {
         case 'name':
           return a.title.localeCompare(b.title);
         case 'date':
-          return new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime();
+          return new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime();
         case 'status':
           return Number(a.completed) - Number(b.completed);
         default:
@@ -336,7 +343,15 @@ const TodoListScreen: React.FC = () => {
                   onPress={() => {
                     setSortBy(option.value as SortOption);
                     setShowSortMenu(false);
-                  }}
+                    
+                    // ✅ ADD THIS: Scroll to top when sort changes
+                    setTimeout(() => {
+              flashListRef.current?.scrollToOffset({
+                  offset: 0,
+                  animated: true,
+                });
+            }, 100);
+        }}
                   className={`px-4 py-3 ${sortBy === option.value ? 'bg-accent/20' : ''}`}
                   activeOpacity={0.7}
                 >
@@ -371,6 +386,7 @@ const TodoListScreen: React.FC = () => {
 
       {/* Todo List with FlashList */}
       <FlashList
+        ref={flashListRef}
         data={filteredTodos}
         renderItem={renderTodoItem}
         keyExtractor={keyExtractor}

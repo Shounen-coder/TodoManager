@@ -28,6 +28,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.Jaasim.todomanager",
+      "softwareKeyboardLayoutMode": "pan",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },

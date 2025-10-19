@@ -89,6 +89,11 @@ const TodoListScreen: React.FC = () => {
     return filtered;
   }, [todos, searchQuery, sortBy, filterBy]);
 
+   // ✅ Sync positions when todos change
+useEffect(() => {
+  dragListState.updatePositions(filteredTodos);
+}, [filteredTodos]);
+
   const stats = useMemo(() => {
     return {
       total: todos.length,
@@ -194,7 +199,6 @@ const TodoListScreen: React.FC = () => {
         data={filteredTodos}
         onReorder={handleReorder}
         itemHeight={ITEM_HEIGHT}
-        scrollY={dragListState.scrollY}
         isDragging={dragListState.isDragging}
         positions={dragListState.positions} 
         isDragEnabled={isDragEnabled} // Pass drag enabled prop

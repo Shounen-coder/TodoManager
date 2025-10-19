@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { StyleSheet, Platform, View, Dimensions } from 'react-native';
+import React from 'react';
+import { Dimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     SharedValue,
@@ -18,24 +18,23 @@ interface DraggableTodoItemProps {
   onReorder: (fromIndex: number, toIndex: number) => void;
   children: React.ReactNode;
   itemHeight: number;
-  scrollY: SharedValue<number>;
-  isDragging:SharedValue<number>;
-  positions: SharedValue<{ [key: string]: number }>;
   isDragEnabled: boolean;
-
+  positions: SharedValue<{ [key: string]: number }>;
+  isDragging: SharedValue<number>;
 }
 
 const LONG_PRESS_DURATION = 400;
 const LIFT_SCALE = 1.05;
-const SHADOW_ELEVATION = 8;
-
-
 
 const SMOOTH_TIMING_CONFIG = {
   duration: 200,
   easing: Easing.inOut(Easing.ease),
 };
 
+/**
+ * DraggableTodoItem - Smooth scroll-following drag
+ * No auto-scroll, naturally follows finger like scrolling
+ */
 const DraggableTodoItem: React.FC<DraggableTodoItemProps> = ({
   item,
   index,
@@ -43,42 +42,53 @@ const DraggableTodoItem: React.FC<DraggableTodoItemProps> = ({
   onReorder,
   children,
   itemHeight,
-  scrollY,
-  isDragging,
-  positions,
   isDragEnabled,
+  positions,
+  isDragging,
 }) => {
   const offsetY = useSharedValue(0);
   const isLifted = useSharedValue(false);
   const touchStartTime = useSharedValue(0);
-  const touchStartY = useSharedValue(0);
+  const dragStartIndex = useSharedValue(index);
 
   /**
-   * Calculate target position based on drag location
+   * Calculate target index from absolute offset
    */
-  const getNewIndex = (translationY: number) => {
+  const getNewIndex = (totalOffset: number) => {
     'worklet';
-    const currentTop = index * itemHeight + translationY;
-    const newIndex = Math.round(currentTop / itemHeight);
+    const itemTop = dragStartIndex.value * itemHeight;
+    const currentPosition = itemTop + totalOffset;
+    const newIndex = Math.round(currentPosition / itemHeight);
     return Math.max(0, Math.min(data.length - 1, newIndex));
   };
 
   /**
-   * Update positions map for all items
+   * Update all item positions
    */
-  const updatePositions = (fromIndex: number, toIndex: number) => {
+  const updatePositions = (draggedIndex: number, targetIndex: number) => {
     'worklet';
-    const newPositions = { ...positions.value };
     
-    const orderedItems = Object.keys(newPositions).sort(
+    if (draggedIndex === targetIndex) return;
+
+    const newPositions = { ...positions.value };
+    const draggedItemId = data[draggedIndex]?.id;
+    
+    if (!draggedItemId) return;
+
+    // Get current order
+    const orderedIds = Object.keys(newPositions).sort(
       (a, b) => newPositions[a] - newPositions[b]
     );
 
-    const movedItemId = orderedItems[fromIndex];
-    orderedItems.splice(fromIndex, 1);
-    orderedItems.splice(toIndex, 0, movedItemId);
+    // Remove dragged item
+    const draggedId = orderedIds[draggedIndex];
+    orderedIds.splice(draggedIndex, 1);
+    
+    // Insert at new position
+    orderedIds.splice(targetIndex, 0, draggedId);
 
-    orderedItems.forEach((id, idx) => {
+    // Update positions
+    orderedIds.forEach((id, idx) => {
       newPositions[id] = idx;
     });
 
@@ -86,26 +96,25 @@ const DraggableTodoItem: React.FC<DraggableTodoItemProps> = ({
   };
 
   /**
-   * Long Press + Pan Gesture with auto-scroll support
+   * Long press + Pan gesture
    */
   const dragGesture = Gesture.Pan()
     .manualActivation(true)
     .enabled(isDragEnabled)
-    .onTouchesDown((event) => {
+    .onTouchesDown(() => {
       if (!isDragEnabled) return;
       touchStartTime.value = Date.now();
-      touchStartY.value = event.changedTouches[0].absoluteY;
     })
     .onTouchesMove((event, state) => {
       if (!isDragEnabled) return;
       
       const elapsed = Date.now() - touchStartTime.value;
-      const dy = Math.abs(event.changedTouches[0].absoluteY - touchStartY.value);
+      const dy = Math.abs(event.changedTouches[0].y - event.allTouches[0].y);
 
       if (elapsed > LONG_PRESS_DURATION && dy < 10) {
         state.activate();
       } 
-      else if (Math.abs(event.changedTouches[0].absoluteX - event.allTouches[0].absoluteX) > 10) {
+      else if (Math.abs(event.changedTouches[0].x - event.allTouches[0].x) > 10) {
         state.fail();
       }
       else if (elapsed < LONG_PRESS_DURATION && dy > 10) {
@@ -115,72 +124,79 @@ const DraggableTodoItem: React.FC<DraggableTodoItemProps> = ({
     .onStart(() => {
       isDragging.value = index;
       isLifted.value = true;
+      dragStartIndex.value = positions.value[item.id] || index;
     })
     .onUpdate((event) => {
+      // Update offset directly from gesture translation
       offsetY.value = event.translationY;
 
+      // Calculate new index
+      const currentIndex = positions.value[item.id] || index;
       const newIndex = getNewIndex(event.translationY);
 
-      if (newIndex !== positions.value[item.id]) {
-        updatePositions(positions.value[item.id], newIndex);
+      // Update positions if changed
+      if (newIndex !== currentIndex) {
+        updatePositions(currentIndex, newIndex);
       }
     })
     .onEnd(() => {
-      const finalIndex = positions.value[item.id];
+      // ✅ Get final position and commit immediately (no snap-back)
+      const finalIndex = positions.value[item.id] || index;
+      // ✅ Calculate final offset to stay in place
+      const finalOffset = (finalIndex - index) * itemHeight;
       
+      // ✅ Move directly to final position (no intermediate animation)
+      offsetY.value = finalOffset;
       
-    //   offsetY.value = withTiming(
-    //     (finalIndex - index) * itemHeight,
-    //     SMOOTH_TIMING_CONFIG
-    //   );
-    offsetY.value = (finalIndex - index) * itemHeight;
+      // Stop lift effect
+      isLifted.value = false;
+      isDragging.value = -1;
 
-      if (finalIndex !== index) {
+      
+
+      // Trigger reorder
         runOnJS(onReorder)(index, finalIndex);
-      }
-      
-      
+
+      // Reset offset after a frame (list has reordered)
+      setTimeout(() => {
         offsetY.value = 0;
+      }, 50);
     });
 
   /**
-   * Animated style for the draggable wrapper
+   * Animated style
    */
   const animatedStyle = useAnimatedStyle(() => {
-    // if this item is being dragged
+    // This item is being dragged
     if (isDragging.value === index) {
       return {
         transform: [
           { translateY: offsetY.value },
           { scale: withTiming(isLifted.value ? LIFT_SCALE : 1, { duration: 150 }) },
         ],
-        zIndex: isLifted.value ? 999 : 1,
-        elevation: isLifted.value ? SHADOW_ELEVATION : 0,
+        zIndex: 999,
+        elevation: 8,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: isLifted.value ? 0.3 : 0,
-        shadowRadius: isLifted.value ? 8 : 0,
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
       };
     }
 
+    // Another item is being dragged - shift this one
     if (isDragging.value !== -1 && positions.value[item.id] !== undefined) {
-      const targetPosition = positions.value[item.id];
-    //   const translateY = (targetPosition - index) * itemHeight;
-    // Only animate if position actually changed
-      if (targetPosition !== index) {
-        const translateY = (targetPosition - index) * itemHeight;
+      const currentPosition = positions.value[item.id];
+      const translateY = (currentPosition - index) * itemHeight;
 
-        return {
-         transform: [
-          {
-            translateY: withTiming(translateY, SMOOTH_TIMING_CONFIG),
-          },
+      return {
+        transform: [
+          { translateY: withTiming(translateY, SMOOTH_TIMING_CONFIG) },
         ],
         zIndex: 1,
       };
     }
-}
 
+    // Normal state
     return {
       transform: [{ translateY: 0 }],
       zIndex: 1,

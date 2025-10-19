@@ -29,6 +29,8 @@ interface TodoStore {
   // Computed getters
   getFilteredTodos: () => Todo[];
   getStats: () => { total: number; completed: number; active: number };
+
+  reorderTodos: (fromIndex: number, toIndex: number) => void;
 }
 
 /**
@@ -48,7 +50,7 @@ export const useTodoStore = create<TodoStore>()(
       // Initial State
       todos: [],
       searchQuery: '',
-      sortBy: 'date',
+      sortBy: 'manual',
       filterBy: 'all',
       _hasHydrated: false,
 
@@ -143,6 +145,11 @@ export const useTodoStore = create<TodoStore>()(
           return matchesSearch;
         });
 
+         if (sortBy === 'manual') {
+          // Return as-is (preserves drag-drop order)
+          return filtered;
+        }
+
         // Sort
         filtered = filtered.sort((a, b) => {
           switch (sortBy) {
@@ -168,6 +175,15 @@ export const useTodoStore = create<TodoStore>()(
           completed: todos.filter((t) => t.completed).length,
           active: todos.filter((t) => !t.completed).length,
         };
+      },
+      reorderTodos: (fromIndex, toIndex) => {
+        set((state) => {
+          const newTodos = [...state.todos];
+          const [movedItem] = newTodos.splice(fromIndex, 1);
+          newTodos.splice(toIndex, 0, movedItem);
+          
+          return { todos: newTodos }; // Automatically switch to manual sort when user drags
+        });
       },
     }),
     {

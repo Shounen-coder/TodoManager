@@ -3,6 +3,7 @@
 
 // Define sorting and filtering options constants for the todo list
 export const SORT_OPTIONS = [
+  { label: 'Manual', value: 'manual' as const },// Added 'manual' sorting option
   { label: 'Date', value: 'date' as const },
   { label: 'Name', value: 'name' as const },
   { label: 'Status', value: 'status' as const },

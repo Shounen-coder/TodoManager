@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,27 +11,23 @@ import TodoForm from '../components/todo/TodoForm';
 import SearchBar from '../components/todo/SearchBar';
 import EmptyState from '../components/todo/EmptyState';
 import Button from '../components/common/Button';
+import DraggableTodoItem from '../components/todo/DraggableTodoItem'; // New import
+import { useDragList } from '../hooks/useDragList'; // New import
 import { SORT_OPTIONS, FILTER_OPTIONS } from '../utils/constants';
 
-/**
- * Main TodoList Screen
- * Implements all core features with proper state subscriptions
- */
+// Estimated item height for drag calculations
+const ITEM_HEIGHT = 140;
+
 const TodoListScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-
-  //
-//   const flashListRef = useRef<FlashList<Todo> | null>(null);
-//const flashListRef = useRef<FlashList<Todo>>(null);
   const flashListRef = useRef<any>(null);
 
-
-  // Theme - Subscribe to changes
+  // Theme
   const theme = useThemeStore((state) => state.mode);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const isDark = theme === 'dark';
 
-  // Todo Store - Subscribe to ALL necessary state
+  // Todo Store
   const todos = useTodoStore((state) => state.todos);
   const searchQuery = useTodoStore((state) => state.searchQuery);
   const sortBy = useTodoStore((state) => state.sortBy);
@@ -43,6 +39,13 @@ const TodoListScreen: React.FC = () => {
   const clearCompleted = useTodoStore((state) => state.clearCompleted);
   const setSortBy = useTodoStore((state) => state.setSortBy);
   const setFilterBy = useTodoStore((state) => state.setFilterBy);
+  const reorderTodos = useTodoStore((state) => state.reorderTodos); //  New action for reordering
+
+  // ✅ Drag list state
+  const dragListState = useDragList(todos);
+
+  // Determine if drag is enabled based on sort option
+   const isDragEnabled = sortBy === 'manual';
 
   // Local State
   const [isFormVisible, setIsFormVisible] = useState(false);
@@ -51,21 +54,25 @@ const TodoListScreen: React.FC = () => {
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
 
-  // Computed Values - Recalculate when dependencies change
+  // Computed Values
   const filteredTodos = useMemo(() => {
-    // Filter by search query
     let filtered = todos.filter((todo) => {
       const matchesSearch =
         todo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         todo.description.toLowerCase().includes(searchQuery.toLowerCase());
       
-      // Filter by completion status
       if (filterBy === 'active') return matchesSearch && !todo.completed;
       if (filterBy === 'completed') return matchesSearch && todo.completed;
       return matchesSearch;
     });
 
-    // Sort
+    // Sorting using manual option
+    if (sortBy === 'manual') {
+      // Return as-is (preserves drag-drop order)
+      return filtered; //no sorting applied
+    }
+
+//apply automatic sorting for other options
     filtered = filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
@@ -91,6 +98,12 @@ const TodoListScreen: React.FC = () => {
   }, [todos]);
 
   const hasCompletedTodos = stats.completed > 0;
+
+ 
+
+  const handleReorder = useCallback((fromIndex: number, toIndex: number) => {
+  reorderTodos(fromIndex, toIndex);
+}, [reorderTodos]);
 
   /**
    * Handle Add Todo
@@ -171,18 +184,38 @@ const TodoListScreen: React.FC = () => {
   }, []);
 
   /**
-   * Render Todo Item
+   * ✅ Render Todo Item with Drag Wrapper
    */
   const renderTodoItem = useCallback(
-    ({ item }: { item: Todo }) => (
-      <TodoItem
-        todo={item}
-        onEdit={handleEditTodo}
-        onDelete={handleDeleteTodo}
-        onToggle={handleToggleTodo}
-      />
+    ({ item, index }: { item: Todo; index: number }) => (
+      <DraggableTodoItem
+        item={item}
+        index={index}
+        data={filteredTodos}
+        onReorder={handleReorder}
+        itemHeight={ITEM_HEIGHT}
+        scrollY={dragListState.scrollY}
+        isDragging={dragListState.isDragging}
+        positions={dragListState.positions} 
+        isDragEnabled={isDragEnabled} // Pass drag enabled prop
+      >
+        <TodoItem
+          todo={item}
+          onEdit={handleEditTodo}
+          onDelete={handleDeleteTodo}
+          onToggle={handleToggleTodo}
+        />
+      </DraggableTodoItem>
     ),
-    [handleEditTodo, handleDeleteTodo, handleToggleTodo]
+    [
+      filteredTodos,
+      handleReorder,
+      handleEditTodo,
+      handleDeleteTodo,
+      handleToggleTodo,
+      dragListState,
+      isDragEnabled, // Include in dependencies
+    ]
   );
 
   /**
@@ -343,14 +376,13 @@ const TodoListScreen: React.FC = () => {
                     setSortBy(option.value as SortOption);
                     setShowSortMenu(false);
                     
-                    // ✅ ADD THIS: Scroll to top when sort changes
                     setTimeout(() => {
-              flashListRef.current?.scrollToOffset({
-                  offset: 0,
-                  animated: true,
-                });
-            }, 100);
-        }}
+                      flashListRef.current?.scrollToOffset({
+                        offset: 0,
+                        animated: true,
+                      });
+                    }, 100);
+                  }}
                   className={`px-4 py-3 ${sortBy === option.value ? 'bg-accent/20' : ''}`}
                   activeOpacity={0.7}
                 >
@@ -383,6 +415,7 @@ const TodoListScreen: React.FC = () => {
         </View>
       )}
 
+      
       {/* Todo List with FlashList */}
       <FlashList
         ref={flashListRef}
@@ -390,7 +423,7 @@ const TodoListScreen: React.FC = () => {
         renderItem={renderTodoItem}
         keyExtractor={keyExtractor}
         getItemType={getItemType}
-        // estimatedItemSize={120} not needed for this version
+        // estimatedItemSize={ITEM_HEIGHT} // ✅ Important for drag calculations
         contentContainerStyle={{ paddingBottom: 100 }}
         ListEmptyComponent={renderEmptyState}
         refreshControl={
@@ -407,7 +440,6 @@ const TodoListScreen: React.FC = () => {
         onPress={handleAddTodo}
         className="absolute bottom-6 right-6 h-16 w-16 items-center justify-center rounded-full bg-accent shadow-lg"
         style={{
-            bottom: insets.bottom + 60,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.3,

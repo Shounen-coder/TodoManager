@@ -19,7 +19,7 @@ export type TodoFormData = Omit<Todo, 'id' | 'createdAt' | 'updatedAt' | 'comple
 
 
 //custom sorting options type
-export type SortOption = 'name' | 'date' | 'status';
+export type SortOption = 'manual'|'name' | 'date' | 'status';
 
 // custom filter options type
 export type FilterOption = 'all' | 'completed' | 'active';

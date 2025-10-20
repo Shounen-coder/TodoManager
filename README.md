@@ -69,6 +69,11 @@ src/
 └── storageService.ts
 
 
+## 🚀 Screenshot of eas Log file
+<img width="1719" height="767" alt="Screenshot 2025-10-20 104406" src="https://github.com/user-attachments/assets/5d28b8ea-a41d-456e-ad3a-4e63db5cce3f" />
+
+
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -187,15 +192,6 @@ eas build --platform ios --profile production
 - No todo categories/tags (could be future enhancement)
 - No recurring todos (could be added)
 
-## 🔮 Future Enhancements
-
-- [ ] Cloud sync with backend API
-- [ ] User authentication
-- [ ] Todo categories/tags
-- [ ] Priority levels
-- [ ] Recurring todos
-- [ ] Reminders/notifications
-- [ ] Data export/import
 
 ## 👨‍💻 Developer
 

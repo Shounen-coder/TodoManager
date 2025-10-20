@@ -1,4 +1,4 @@
-# 📱 Todo Manager - React Native App
+# 📱 Todo Manager - React Native App (Drag-Drop-feature added)
 
 A professional, performant, and feature-rich todo management application built with React Native, TypeScript, and modern best practices.
 

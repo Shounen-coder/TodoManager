@@ -2,7 +2,7 @@
 https://expo.dev/accounts/jaasim_dev/projects/TodoManager/builds/43d120e3-57ba-4bf9-828b-899727b56c0e
 
 
-<img width="3000" height="3000" alt="frame" src="https://github.com/user-attachments/assets/9c86a840-2f5a-42b4-92c9-a6b28eafd2b3" />
+<img width="300" height="300" alt="frame" src="https://github.com/user-attachments/assets/9c86a840-2f5a-42b4-92c9-a6b28eafd2b3" />
 
 
 # 📱 Todo Manager - React Native App (Drag-Drop-feature added)

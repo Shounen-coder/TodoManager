@@ -1,3 +1,10 @@
+🤖 Open this link on your Android devices (or scan the QR code) to install the app:
+https://expo.dev/accounts/jaasim_dev/projects/TodoManager/builds/64425194-890c-402e-a975-5b164def545f
+
+
+<img width="100" height="100" alt="qrcode_264761528_9d265be9a791d3fdede806009dafd8ba" src="https://github.com/user-attachments/assets/50bfb3c2-713d-4ee9-9b59-b055f4fab466" />
+
+
 # 📱 Todo Manager - React Native App
 
 A professional, performant, and feature-rich todo management application built with React Native, TypeScript, and modern best practices.
